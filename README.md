@@ -236,3 +236,29 @@ limit 1
 </details>
 
 This implies that we only need to add the data of the file date in each daily ingestion.
+
+### Ingestion process
+
+ - Pending
+
+Verify if the data from before "yesterday" could be present in a new file but not in the previous files that are supposed to be already loaded.
+
+For instance:
+    
+    If on 2024-10-25 we are loading he 2024-10-24 data and there is a new value but from 2024-01-01 will not be loaded
+
+In this case, this strategy does not work, and a complete revision of the file should be executed. Thus, the approach would be incremental with deduplication or another
+
+### Dimensions
+
+Following the same feeding strategy, a sub-set of columns could be selected  to create the dimensions, having a different primary related to the chosen dimension.
+
+Also, tables containing pre-calculated aggregations could be updated every day. For instance, the number of incidences by date:
+
+```
+SELECT '{ds}'::date as incident_date, count(*) as quantity
+FROM public."raw.incidents"
+WHERE incident_date::date = {ds}::date
+```
+
+This step should be executed over a standardized table with incident_date cast to date
