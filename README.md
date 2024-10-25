@@ -78,6 +78,9 @@ It was also done for columns station_area and box.
 
 After the fix and ignoring the data ingestion date columns, there is no row updated
 
+<details>
+<summary>See code</summary>
+
 ```
 with yesterday as (
 	select 
@@ -230,3 +233,6 @@ left join today
 where md5(CAST((yesterday.*) AS text)) <> md5(CAST((today.*) AS text))
 limit 1
 ```
+</details>
+
+This implies that we only need to add the data of the file date in each daily ingestion.
