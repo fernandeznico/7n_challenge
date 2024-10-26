@@ -53,15 +53,16 @@ with DAG(
         raw_table_name = "raw.incidents"
         raw_table = f'public."{raw_table_name}"'
         ds = context["ds"]
+        incident_date_postfix = "T00:00:00.000"
         already_exists = execute_query(
-            query=f"SELECT 1 FROM {raw_table} WHERE _ingestion_date = '{ds}' LIMIT 1",
+            query=f"SELECT 1 FROM {raw_table} WHERE incident_date = {ds} || '{incident_date_postfix}' LIMIT 1",
         )
         if already_exists:
             raise Exception(f"The data already exists for the date `{ds}`")  # Or delete and load
 
         downloaded_file_absolute_path =  context["ti"].xcom_pull(task_ids=load_yesterday_data_to_postgres_task_name)
         df = pandas.read_csv(downloaded_file_absolute_path)
-        df = df[df["incident_date"] > context["ds"]]  # In Airflow ds is yesterday so in 2024-10-25 it will be 24
+        df = df[df["incident_date"] == context["ds"] + incident_date_postfix]  # In Airflow ds is yesterday so in 2024-10-25 it will be 24
         engine = create_engine("postgresql://admin:admin@recalls_db:5432/recalls_db")
         with engine.connect() as conn:
             print(df.to_sql(schema="public", name=raw_table_name, con=conn, if_exists="append", index=False))
