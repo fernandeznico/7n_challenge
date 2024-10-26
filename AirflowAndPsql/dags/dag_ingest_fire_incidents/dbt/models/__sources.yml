@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: raw_incidents
+    database: recalls_db
+    schema: public
+    quoting:
+      identifier: true
+    tables:
+      - name: raw_incidents
+        identifier: raw.incidents

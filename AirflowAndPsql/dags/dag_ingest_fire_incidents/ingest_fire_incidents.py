@@ -9,9 +9,11 @@ from pathlib import Path
 import pandas
 from airflow import DAG
 from airflow.decorators import task
+from airflow.models import Connection
+from airflow.operators.bash import BashOperator
 from pendulum import datetime
 
-from config import WORKSPACE_PATH
+from config import WORKSPACE_PATH, CONN_ID__RECALLS_DB, DBT_PROFILES_PATH
 from utils.postgres import execute_query
 
 
@@ -32,6 +34,8 @@ with DAG(
     schedule_interval="0 3 * * *",  # It should be after data loaded to the Web Page
     tags=["CSV", "DAILY"],
 ) as dag:
+    dag_path = Path(__file__).parent
+
     @task(task_id="download_yesterday_data")
     def download_yesterday_sales(**context):
         """Download daily data from the webpage and saves it as a CSV file."""
@@ -45,8 +49,8 @@ with DAG(
         return file_saved_in.absolute().as_posix()
 
 
-    load_yesterday_data_to_postgres_task_name = "load_yesterday_data_to_postgres"
-    @task(task_id=load_yesterday_data_to_postgres_task_name)
+    dag_load_yesterday_data_to_postgres_task_name = "load_yesterday_data_to_postgres"
+    @task(task_id=dag_load_yesterday_data_to_postgres_task_name)
     def load_yesterday_sales_to_postgres(**context):
         from sqlalchemy import create_engine
 
@@ -60,10 +64,10 @@ with DAG(
         if already_exists:
             raise Exception(f"The data already exists for the date `{ds}`")  # Or delete and load
 
-        downloaded_file_absolute_path =  context["ti"].xcom_pull(task_ids=load_yesterday_data_to_postgres_task_name)
+        downloaded_file_absolute_path =  context["ti"].xcom_pull(task_ids=dag_load_yesterday_data_to_postgres_task_name)
         df = pandas.read_csv(downloaded_file_absolute_path)
         df = df[df["incident_date"] == context["ds"] + incident_date_postfix]  # In Airflow ds is yesterday so in 2024-10-25 it will be 24
-        engine = create_engine("postgresql://admin:admin@recalls_db:5432/recalls_db")
+        engine = create_engine("postgresql://admin:admin@recalls_db:5432/recalls_db")  # Should use Airflow Connections
         with engine.connect() as conn:
             print(df.to_sql(schema="public", name=raw_table_name, con=conn, if_exists="append", index=False))
 
@@ -73,4 +77,18 @@ with DAG(
         # FROM 'file_path'
         # (FORMAT format_name [OPTIONS]);
 
-    download_yesterday_sales() >> load_yesterday_sales_to_postgres()
+    dag_recalls_db_conn_conf: Connection = Connection.get_connection_by_id(CONN_ID__RECALLS_DB)
+    dag_dbt_profiles_dir = DBT_PROFILES_PATH.absolute().as_posix()
+    dag_dbt_project_dir = Path().parent.joinpath("dbt")
+    task_dbt_daily_incidents_agg = BashOperator(
+        task_id="dbt_daily_incidents_agg",
+        bash_command=f"dbt run --project-dir {dag_dbt_project_dir} --profiles-dir {dag_dbt_profiles_dir}",
+        project_dir=dag_path.joinpath("dbt").absolute().as_posix(),
+        profiles_dir=dag_path.parent.joinpath(".dbt").absolute().as_posix(),
+        env={
+            "RECALLS_DB_USERNAME": dag_recalls_db_conn_conf.login,
+            "RECALLS_DB_PASSWORD": dag_recalls_db_conn_conf.password,
+        },
+    )
+
+    download_yesterday_sales() >> load_yesterday_sales_to_postgres() >> task_dbt_daily_incidents_agg

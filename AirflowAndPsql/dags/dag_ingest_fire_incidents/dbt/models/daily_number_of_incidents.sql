@@ -6,7 +6,7 @@
 }}
 
 SELECT '{{ ds }}'::date as incident_date, count(*) as quantity
-FROM public."raw.incidents"
+FROM {{ source('raw_incidents', 'raw_incidents') }}
 
 {% if is_incremental() %}
 

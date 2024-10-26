@@ -1,0 +1,7 @@
+config-version: 2
+
+name: "fire_incidents"
+version: "3.0.0"
+require-dbt-version: "=1.8.7"
+
+profile: recalls_db
