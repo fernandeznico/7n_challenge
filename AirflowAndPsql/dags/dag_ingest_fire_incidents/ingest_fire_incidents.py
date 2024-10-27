@@ -59,7 +59,7 @@ with DAG(
         ds = context["ds"]
         incident_date_postfix = "T00:00:00.000"
         already_exists = execute_query(
-            query=f"SELECT 1 FROM {raw_table} WHERE incident_date = {ds} || '{incident_date_postfix}' LIMIT 1",
+            query=f"SELECT 1 FROM {raw_table} WHERE incident_date = '{ds}' || '{incident_date_postfix}' LIMIT 1",
         )
         if already_exists:
             raise Exception(f"The data already exists for the date `{ds}`")  # Or delete and load
