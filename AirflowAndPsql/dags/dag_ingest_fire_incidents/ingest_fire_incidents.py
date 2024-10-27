@@ -77,14 +77,18 @@ with DAG(
         # FROM 'file_path'
         # (FORMAT format_name [OPTIONS]);
 
-    dag_recalls_db_conn_conf: Connection = Connection.get_connection_by_id(CONN_ID__RECALLS_DB)
+    dag_recalls_db_conn_conf: Connection = Connection.get_connection_from_secrets(conn_id=CONN_ID__RECALLS_DB)
     dag_dbt_profiles_dir = DBT_PROFILES_PATH.absolute().as_posix()
     dag_dbt_project_dir = Path().parent.joinpath("dbt")
+    dag_dbt_daily_incidents_agg_vars = """--vars '{"ds":"{{ ds }}"}'"""
     task_dbt_daily_incidents_agg = BashOperator(
         task_id="dbt_daily_incidents_agg",
-        bash_command=f"dbt run --project-dir {dag_dbt_project_dir} --profiles-dir {dag_dbt_profiles_dir}",
-        project_dir=dag_path.joinpath("dbt").absolute().as_posix(),
-        profiles_dir=dag_path.parent.joinpath(".dbt").absolute().as_posix(),
+        bash_command=" ".join((
+            f"dbt run ",
+            f"--project-dir {dag_dbt_project_dir}",
+            f"--profiles-dir {dag_dbt_profiles_dir}"
+            f"{dag_dbt_daily_incidents_agg_vars}",
+        )),
         env={
             "RECALLS_DB_USERNAME": dag_recalls_db_conn_conf.login,
             "RECALLS_DB_PASSWORD": dag_recalls_db_conn_conf.password,

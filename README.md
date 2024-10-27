@@ -1,6 +1,14 @@
 # 7n_challenge
 
-## Assumptions
+## Installation
+
+Run [docker-compose.yaml](AirflowAndPsql%2Fdocker-compose.yaml)
+
+### Configure Airflow Connector to Postgres Database
+
+![img.png](AirflowAndPsql/Documentation/ReadmeImages/installationConfigureAirflowConnector.png)
+
+## Development Process
 
 ### Dataset
 
@@ -255,10 +263,6 @@ Following the same feeding strategy, a sub-set of columns could be selected  to 
 
 Also, tables containing pre-calculated aggregations could be updated every day. For instance, the number of incidences by date:
 
-```
-SELECT '{ds}'::date as incident_date, count(*) as quantity
-FROM public."raw.incidents"
-WHERE incident_date::date = {ds}::date
-```
+![img.png](AirflowAndPsql/Documentation/ReadmeImages/datasetDailyIncidentsAgg.png)
 
-This step should be executed over a standardized table with incident_date cast to date
+Implemented in the DBT model [daily_number_of_incidents.sql](AirflowAndPsql%2Fdags%2Fdag_ingest_fire_incidents%2Fdbt%2Fmodels%2Fdaily_number_of_incidents.sql)
