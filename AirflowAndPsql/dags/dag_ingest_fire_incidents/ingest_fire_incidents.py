@@ -28,8 +28,8 @@ default_args = {
 with DAG(
     dag_id=Path(__file__).stem,
     default_args=default_args,
-    start_date=datetime(2025, 10, 22),  # For testing purposes
-    end_date=datetime(2025, 10, 24),  # For testing purposes
+    start_date=datetime(2024, 10, 22),  # For testing purposes
+    end_date=datetime(2024, 10, 24),  # For testing purposes
     template_searchpath=Path(__file__).parent.absolute().as_posix(),
     schedule_interval="0 3 * * *",  # It should be after data loaded to the Web Page
     tags=["CSV", "DAILY"],
