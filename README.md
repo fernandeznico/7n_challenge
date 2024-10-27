@@ -275,6 +275,6 @@ Also, tables containing pre-calculated aggregations could be updated every day. 
 
 Implemented in the DBT model [daily_number_of_incidents.sql](AirflowAndPsql%2Fdags%2Fdag_ingest_fire_incidents%2Fdbt%2Fmodels%2Fdaily_number_of_incidents.sql)
 
-### DAG operation snapshot
+### DAG working screenshot
 
 ![img.png](AirflowAndPsql/Documentation/ReadmeImages/workingDAGExecution.png)
