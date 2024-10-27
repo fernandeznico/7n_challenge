@@ -13,7 +13,7 @@ from airflow.models import Connection
 from airflow.operators.bash import BashOperator
 from pendulum import datetime
 
-from config import WORKSPACE_PATH, CONN_ID__RECALLS_DB, DBT_PROFILES_PATH
+from config import WORKSPACE_PATH, CONN_ID__RECALLS_DB, DBT_PROFILES_PATH, DBT_CORE_PATH
 from utils.postgres import execute_query
 
 
@@ -34,9 +34,10 @@ with DAG(
     schedule_interval="0 3 * * *",  # It should be after data loaded to the Web Page
     tags=["CSV", "DAILY"],
 ) as dag:
-    dag_path = Path(__file__).parent
+    dag_this_dag_dir_path = Path(__file__).parent
 
-    @task(task_id="download_yesterday_data")
+    dag_task_name_download_yesterday_data = "download_yesterday_data"
+    @task(task_id=dag_task_name_download_yesterday_data)
     def download_yesterday_sales(**context):
         """Download daily data from the webpage and saves it as a CSV file."""
         # TODO
@@ -48,9 +49,7 @@ with DAG(
         )
         return file_saved_in.absolute().as_posix()
 
-
-    dag_load_yesterday_data_to_postgres_task_name = "load_yesterday_data_to_postgres"
-    @task(task_id=dag_load_yesterday_data_to_postgres_task_name)
+    @task(task_id="load_yesterday_data_to_postgres")
     def load_yesterday_sales_to_postgres(**context):
         from sqlalchemy import create_engine
 
@@ -64,7 +63,8 @@ with DAG(
         if already_exists:
             raise Exception(f"The data already exists for the date `{ds}`")  # Or delete and load
 
-        downloaded_file_absolute_path =  context["ti"].xcom_pull(task_ids=dag_load_yesterday_data_to_postgres_task_name)
+        downloaded_file_absolute_path =  context["ti"].xcom_pull(task_ids=dag_task_name_download_yesterday_data)
+
         df = pandas.read_csv(downloaded_file_absolute_path)
         df = df[df["incident_date"] == context["ds"] + incident_date_postfix]  # In Airflow ds is yesterday so in 2024-10-25 it will be 24
         engine = create_engine("postgresql://admin:admin@recalls_db:5432/recalls_db")  # Should use Airflow Connections
@@ -79,16 +79,17 @@ with DAG(
 
     dag_recalls_db_conn_conf: Connection = Connection.get_connection_from_secrets(conn_id=CONN_ID__RECALLS_DB)
     dag_dbt_profiles_dir = DBT_PROFILES_PATH.absolute().as_posix()
-    dag_dbt_project_dir = Path().parent.joinpath("dbt")
+    dag_dbt_project_dir = dag_this_dag_dir_path.joinpath("dbt").absolute().as_posix()
     dag_dbt_daily_incidents_agg_vars = """--vars '{"ds":"{{ ds }}"}'"""
+    dag_dbt_core_posix_path = DBT_CORE_PATH.absolute().as_posix()  # It's recommended to use another (virtualized) Python
     task_dbt_daily_incidents_agg = BashOperator(
         task_id="dbt_daily_incidents_agg",
-        bash_command=" ".join((
-            f"dbt run ",
-            f"--project-dir {dag_dbt_project_dir}",
-            f"--profiles-dir {dag_dbt_profiles_dir}"
-            f"{dag_dbt_daily_incidents_agg_vars}",
-        )),
+        bash_command=(
+            f"{dag_dbt_core_posix_path} run "
+            f"--project-dir {dag_dbt_project_dir} "
+            f"--profiles-dir {dag_dbt_profiles_dir} "
+            f"{dag_dbt_daily_incidents_agg_vars}"
+        ),
         env={
             "RECALLS_DB_USERNAME": dag_recalls_db_conn_conf.login,
             "RECALLS_DB_PASSWORD": dag_recalls_db_conn_conf.password,
