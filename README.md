@@ -4,9 +4,17 @@
 
 Run [docker-compose.yaml](AirflowAndPsql%2Fdocker-compose.yaml)
 
-### Configure Airflow Connector to Postgres Database
+### Pre Configurations 
+
+ - Configure Airflow Connector to the Postgres Database
 
 ![img.png](AirflowAndPsql/Documentation/ReadmeImages/installationConfigureAirflowConnector.png)
+
+ - Add the dataset files
+
+![img.png](AirflowAndPsql/Documentation/ReadmeImages/preConfigurationAddDatasets.png)
+
+Where the file `wr8u-xric_version_5503.csv` is `2024-10-22` and `wr8u-xric_version_5505.csv` is `2024-10-24`
 
 ## Development Process
 
